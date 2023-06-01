@@ -28,7 +28,8 @@ int prime_sizes[] = {53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 4915
 struct map_node{
 	Pointer key;		// Το κλειδί που χρησιμοποιείται για να hash-αρουμε
 	Pointer value;  	// Η τιμή που αντισοιχίζεται στο παραπάνω κλειδί
-	State state;	// Μεταβλητή για να μαρκάρουμε την κατάσταση των κόμβων 
+	State state;		// Μεταβλητή για να μαρκάρουμε την κατάσταση των κόμβων 
+	Vector vec;
 };
 
 // Δομή του Map (περιέχει όλες τις πληροφορίες που χρεαζόμαστε για το HashTable)
@@ -75,6 +76,7 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	bool already_in_map = false;
 	Pointer found_v = NULL;
 	MapNode node = NULL;
+	MapNode new_node = NULL;
 	uint pos;
 	uint stop = (map->hash_function(key) % map->capacity + NEIGHBOURS) % map->capacity;
 	uint start = map->hash_function(key) % map->capacity;
@@ -82,7 +84,7 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		pos != stop;										// αν φτάσουμε στο stop σταματάμε
 		pos = (pos + 1) % map->capacity) {					// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
-		if (map->array[pos].key == NULL) break;
+		if (map->array[pos].state == EMPTY) break;
 
 		if (map->compare(map->array[pos].key, key) == 0) {
 			already_in_map = true;
@@ -91,30 +93,28 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		}
 	}
 	
-	if (map->array[pos].key == NULL)						// αν βρήκαμε EMPTY, το node δεν έχει πάρει ακόμα τιμή
+	if (map->array[pos].state == EMPTY)						// αν βρήκαμε EMPTY, το node δεν έχει πάρει ακόμα τιμή
 	node = &map->array[pos];
 	else if (node == NULL && pos == stop)
 	node = &map->array[start];
-
-	if (pos == stop && map->array[pos].key != NULL && node->state == VECTOR) { 		// Αν φτάσαμε στο pos + NEIGHBOURS ψάχνουμε στο vector (αν υπάρχει) στην θέση 
-		found_v = vector_find(map->array[start].value, value, map->compare);		// που κάνουμε το hash
+	new_node = node;
+	new_node->key = key;
+	new_node->value = value;
+	new_node->vec = NULL;
+	if (pos == stop && map->array[pos].state == OCCUPIED && map->array[start].state == VECTOR) { 		// Αν φτάσαμε στο pos + NEIGHBOURS ψάχνουμε στο vector (αν υπάρχει) στην θέση 
+		found_v = vector_find(map->array[start].vec, new_node, map->compare);		// που κάνουμε το hash
 		if (found_v != NULL) {
 			already_in_map = true;
 		}
 	}
 
-	if (already_in_map == false && pos == stop && map->array[pos].key != NULL) {
+	if (already_in_map == false && pos == stop && map->array[pos].state == OCCUPIED) {
 		if (map->array[start].state == OCCUPIED) {
-			Pointer previous_v = node->value;
-			Pointer previous_k = node->key;
-			node->value = vector_create(0, free);
-			node->key = vector_create(0, free);
-			vector_insert_last(node->value, previous_v);
-			vector_insert_last(node->key, previous_k);
+			node->vec = vector_create(0, free);
 			node->state = VECTOR;
 		}
-		vector_insert_last(node->value, value);
-		vector_insert_last(node->key, key);
+
+		vector_insert_last(node->vec, new_node);
 		map->size++;
 		return;
 	}
@@ -129,20 +129,17 @@ void map_insert(Map map, Pointer key, Pointer value) {
 				map->destroy_value(node->value);
 		}
 		else if (node->state == VECTOR) {
-			Pointer vector_last_value = vector_node_value(node->value, vector_last(node->value));
-			Pointer vector_last_key = vector_node_value(node->key, vector_last(node->key));
+			Pointer vector_last_value = vector_node_value(node->vec, vector_last(node->vec));
 			int i = 0;
-			for (VectorNode v_node = vector_first(node->value); 
-				v_node != vector_last(node->value); 
-				v_node = vector_next(node->value, v_node)) {
+			for (VectorNode v_node = vector_first(node->vec); 
+				v_node != vector_last(node->vec); 
+				v_node = vector_next(node->vec, v_node)) {
 
-					if (vector_node_value(node->value, v_node) == found_v) break;
+					if (vector_node_value(node->vec, v_node) == found_v) break;
 					else i++;
 			}
-			vector_set_at(node->value, i, vector_last_value);
-			vector_set_at(node->key, i, vector_last_key);
-			vector_remove_last(node->value);
-			vector_remove_last(node->key);
+			vector_set_at(node->vec, i, vector_last_value);
+			vector_remove_last(node->vec);
 		}
 	}
 	// Προσθήκη τιμών στον κόμβο
@@ -164,9 +161,10 @@ Pointer map_find(Map map, Pointer key) {
 	bool found = false;
 	int i;
 	if (node->state == VECTOR) {
-		Vector vec = node->key;
+		Vector vec = node->vec;
 		for (i = 0; i < vector_size(vec); i++) {
-			if (map->compare(vector_get_at(vec, i), key) == 0) {
+			MapNode p = vector_get_at(vec, i);
+			if (map->compare(p, key) == 0) {
 				found = true;
 				break;
 			}
@@ -199,7 +197,7 @@ void map_destroy(Map map) {
 MapNode map_first(Map map) {
 	//Ξεκινάμε την επανάληψή μας απο το 1ο στοιχείο, μέχρι να βρούμε κάτι όντως τοποθετημένο
 	for (int i = 0; i < map->capacity; i++)
-		if (map->array[i].state == OCCUPIED)
+		if (map->array[i].state == OCCUPIED || map->array[i].state == VECTOR)
 			return &map->array[i];
 
 	return MAP_EOF;
@@ -208,21 +206,25 @@ MapNode map_first(Map map) {
 MapNode map_next(Map map, MapNode node) {
 	// Το node είναι pointer στο i-οστό στοιχείο του array, οπότε node - array == i  (pointer arithmetic!)
 	for (int i = node - map->array + 1; i < map->capacity; i++)
-		if (map->array[i].state == OCCUPIED)
+		if (map->array[i].state == OCCUPIED || map->array[i].state == VECTOR)
 			return &map->array[i];
 
 	return MAP_EOF;
 }
 
 Pointer map_node_key(Map map, MapNode node) {
-	if (node->state == VECTOR)
-	return NULL;
+	if (node->state == VECTOR) {
+		MapNode p = vector_node_value(node->vec, vector_first(node->vec));
+		return p->key;
+	}
 	else return node->key;
 }
 
 Pointer map_node_value(Map map, MapNode node) {
-	if (node->state == VECTOR)
-	return NULL;
+	if (node->state == VECTOR) {
+		MapNode p = vector_node_value(node->vec,vector_first(node->vec));
+		return p->value;
+	}
 	else return node->value;
 }
 
@@ -240,11 +242,12 @@ MapNode map_find_node(Map map, Pointer key) {
 	}
 	if (map->array[start].state == VECTOR) {
 		int i = 0;
-		Vector vec = map->array[start].key;
+		Vector vec = map->array[start].vec;
 		for (VectorNode v_node = vector_first(vec); 
 			v_node != vector_last(vec); 
 			v_node = vector_next(vec, v_node)) {
-				if (map->compare(vector_get_at(vec, i), key) == 0) return &map->array[start];
+				MapNode p = vector_get_at(vec, i);
+				if (map->compare(p->key, key) == 0) return &map->array[start];
 				i++;
 		}	
 	}
