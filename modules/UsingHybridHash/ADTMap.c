@@ -51,6 +51,7 @@ Map map_create(CompareFunc compare, DestroyFunc destroy_key, DestroyFunc destroy
 	Map map = malloc(sizeof(*map));
 	map->capacity = prime_sizes[0];
 	map->array = malloc(map->capacity * sizeof(struct map_node));
+	map->chains = malloc(map->capacity * sizeof(Vector*));
 	// Αρχικοποιούμε τους κόμβους που έχουμε σαν διαθέσιμους.
 	for (int i = 0; i < map->capacity; i++)
 		map->array[i].state = EMPTY;
@@ -92,10 +93,18 @@ static void rehash(Map map) {
 
 	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο (το rehash είναι και μία ευκαιρία να ξεφορτωθούμε τα deleted nodes)
 	map->size = 0;
-	for (int i = 0; i < old_capacity; i++)
+	for (int i = 0; i < old_capacity; i++) {
 		if (old_array[i].state == OCCUPIED)
 			map_insert(map, old_array[i].key, old_array[i].value);
-
+	for (VectorNode node = VECTOR_BOF;
+	node != VECTOR_EOF;
+	node = vector_next(map->chains[i], node)) {
+		MapNode N = vector_node_value(map->chains[i], node);
+		map_insert(map, N->key, N->value);
+	}
+	//if (map->chains[i] != NULL)
+	//free(map->chains[i]);
+	}
 	//Αποδεσμεύουμε τον παλιό πίνακα ώστε να μήν έχουμε leaks
 	free(old_array);
 }
@@ -107,7 +116,6 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	// Σκανάρουμε το Hash Table μέχρι να βρούμε διαθέσιμη θέση για να τοποθετήσουμε το ζευγάρι,
 	// ή μέχρι να βρούμε το κλειδί ώστε να το αντικαταστήσουμε.
 	bool already_in_map = false;
-	Pointer found = NULL;
 	MapNode node = NULL;
 	uint pos;
 	uint start = map->hash_function(key) % map->capacity;
@@ -115,33 +123,29 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	for (pos = start;										// ξεκινώντας από τη θέση που κάνει hash το key
 		pos != stop;						// αν φτάσουμε σε EMPTY σταματάμε
 		pos = (pos + 1) % map->capacity) {										// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
-		if (map->array->state == OCCUPIED) {
+		if (map->array[pos].state == OCCUPIED) {
 			if (map->compare(map->array[pos].key, key) == 0) {
 				already_in_map = true;
 				node = &map->array[pos];						// βρήκαμε το key, το ζευγάρι θα μπει αναγκαστικά εδώ (ακόμα και αν είχαμε προηγουμένως βρει DELETED θέση)
 				break;											// και δε χρειάζεται να συνεχίζουμε την αναζήτηση.
 			}
 		}
+		else break;
 	}
 	if (node == NULL && map->array[pos].state == EMPTY)										// αν βρήκαμε EMPTY (όχι DELETED, ούτε το key), το node δεν έχει πάρει ακόμα τιμή
 		node = &map->array[pos];
 
-	// Σε αυτό το σημείο, το node είναι ο κόμβος στον οποίο θα γίνει εισαγωγή.
-	if (already_in_map) {
-		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destropy
-		if (node->key != key && map->destroy_key != NULL)
-			map->destroy_key(node->key);
-
-		if (node->value != value && map->destroy_value != NULL)
-			map->destroy_value(node->value);
-
-	} else {
-		// Νέο στοιχείο, αυξάνουμε τα συνολικά στοιχεία του map
-		map->size++;
-	}
 	if (node == NULL && map->array[pos].state == OCCUPIED) {
-		found = vector_find(map->chains[start], node, map->compare);
-		if (found == NULL) {
+		for (VectorNode node1 = VECTOR_BOF; 
+		node1 != VECTOR_EOF; 
+		node1 = vector_next(map->chains[start], node1)) {
+			MapNode N = vector_node_value(map->chains[start], node1);
+			if (N->key == key && N->value == value) {
+				already_in_map = true;
+				node = N;
+			}
+		}
+		if (already_in_map == false) {
 			node = &map->array[start];
 			node->state = OCCUPIED;
 			node->key = key;
@@ -151,6 +155,21 @@ void map_insert(Map map, Pointer key, Pointer value) {
 			map->chains[start] = vec;
 		}
 	}
+	// Σε αυτό το σημείο, το node είναι ο κόμβος στον οποίο θα γίνει εισαγωγή.
+	if (already_in_map) {
+		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destropy
+		if (node->key != key && map->destroy_key != NULL)
+			map->destroy_key(node->key);
+
+		if (node->value != value && map->destroy_value != NULL)
+			map->destroy_value(node->value);
+
+	} 
+	else {
+		// Νέο στοιχείο, αυξάνουμε τα συνολικά στοιχεία του map
+		map->size++;
+	}
+	
 		// Προσθήκη τιμών στον κόμβο
 		node->state = OCCUPIED;
 		node->key = key;
