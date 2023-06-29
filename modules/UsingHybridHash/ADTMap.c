@@ -53,8 +53,10 @@ Map map_create(CompareFunc compare, DestroyFunc destroy_key, DestroyFunc destroy
 	map->array = malloc(map->capacity * sizeof(struct map_node));
 	map->chains = malloc(map->capacity * sizeof(Vector*));
 	// Αρχικοποιούμε τους κόμβους που έχουμε σαν διαθέσιμους.
-	for (int i = 0; i < map->capacity; i++)
+	for (int i = 0; i < map->capacity; i++) {
 		map->array[i].state = EMPTY;
+		map->chains[i] = NULL;
+	}
 	map->size = 0;
 	map->compare = compare;
 	map->destroy_key = destroy_key;
@@ -99,11 +101,13 @@ static void rehash(Map map) {
 	for (VectorNode node = VECTOR_BOF;
 	node != VECTOR_EOF;
 	node = vector_next(map->chains[i], node)) {
+		if (map->chains != NULL) {
 		MapNode N = vector_node_value(map->chains[i], node);
 		map_insert(map, N->key, N->value);
+		}
 	}
 	//if (map->chains[i] != NULL)
-	//free(map->chains[i]);
+		//free(map->chains[i]);
 	}
 	//Αποδεσμεύουμε τον παλιό πίνακα ώστε να μήν έχουμε leaks
 	free(old_array);
@@ -281,9 +285,11 @@ MapNode map_find_node(Map map, Pointer key) {
 	for (VectorNode node = vector_first(map->chains[start]); 
 	node != VECTOR_EOF; 
 	node = vector_next(map->chains[start], node)) {
+		if (map->chains[start] != NULL) {
 		MapNode MapN = vector_node_value(map->chains[start], node);
 		Pointer found_key = MapN->key;
 		if (found_key == key) return MapN;
+		}
 	}
 	}
 
