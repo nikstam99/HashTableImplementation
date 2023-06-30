@@ -45,13 +45,23 @@ struct map {
 	DestroyFunc destroy_value;
 };
 
+/*static void vector_remove(Vector vec, VectorNode node) {
+	Pointer last_value = vector_node_value(vec, vector_last(vec));
+	Pointer rem_value = vector_node_value(vec, node);
+	for (int i = 0; i < vector_size(vec); i++) {
+		if (vector_get_at(vec, i) == rem_value) {
+			vector_set_at(vec, i, last_value);
+			vector_remove_last(vec);
+		}
+	}
+}*/
 
 Map map_create(CompareFunc compare, DestroyFunc destroy_key, DestroyFunc destroy_value) {
 	// Δεσμεύουμε κατάλληλα τον χώρο που χρειαζόμαστε για το hash table
 	Map map = malloc(sizeof(*map));
 	map->capacity = prime_sizes[0];
 	map->array = malloc(map->capacity * sizeof(struct map_node));
-	map->chains = malloc(map->capacity * sizeof(Vector*));
+	map->chains = malloc(map->capacity * sizeof(Vector));
 	// Αρχικοποιούμε τους κόμβους που έχουμε σαν διαθέσιμους.
 	for (int i = 0; i < map->capacity; i++) {
 		map->array[i].state = EMPTY;
@@ -87,30 +97,35 @@ static void rehash(Map map) {
 	// Αν έχουμε εξαντλήσει όλους τους πρώτους, διπλασιάζουμε
 	if (map->capacity == old_capacity)					// LCOV_EXCL_LINE
 		map->capacity *= 2;								// LCOV_EXCL_LINE
-
+		
+		
+	Vector *map_chains;
+	map_chains = map->chains;
 	// Δημιουργούμε ένα μεγαλύτερο hash table
 	map->array = malloc(map->capacity * sizeof(struct map_node));
-	for (int i = 0; i < map->capacity; i++)
+	for (int i = 0; i < map->capacity; i++) {
 		map->array[i].state = EMPTY;
-
+	}
+	map->chains = malloc(map->capacity * sizeof(Vector));
 	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο (το rehash είναι και μία ευκαιρία να ξεφορτωθούμε τα deleted nodes)
 	map->size = 0;
 	for (int i = 0; i < old_capacity; i++) {
-		if (old_array[i].state == OCCUPIED)
+		if (old_array[i].state == OCCUPIED) {
 			map_insert(map, old_array[i].key, old_array[i].value);
-	for (VectorNode node = VECTOR_BOF;
-	node != VECTOR_EOF;
-	node = vector_next(map->chains[i], node)) {
-		if (map->chains != NULL) {
-		MapNode N = vector_node_value(map->chains[i], node);
-		map_insert(map, N->key, N->value);
 		}
-	}
-	//if (map->chains[i] != NULL)
-		//free(map->chains[i]);
+		if (map_chains[i] != NULL) {
+			for (VectorNode node = vector_first(map_chains[i]);
+			node != VECTOR_EOF;
+			node = vector_next(map_chains[i], node)) {
+				MapNode N = vector_node_value(map_chains[i], node);
+				map_insert(map, N->key, N->value);
+			}
+		}
+		
 	}
 	//Αποδεσμεύουμε τον παλιό πίνακα ώστε να μήν έχουμε leaks
 	free(old_array);
+	free(map_chains);
 }
 
 // Εισαγωγή στο hash table του ζευγαριού (key, item). Αν το key υπάρχει,
@@ -140,7 +155,8 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		node = &map->array[pos];
 
 	if (node == NULL && map->array[pos].state == OCCUPIED) {
-		for (VectorNode node1 = VECTOR_BOF; 
+		if (map->chains[start] != NULL) {
+		for (VectorNode node1 = vector_first(map->chains[start]); 
 		node1 != VECTOR_EOF; 
 		node1 = vector_next(map->chains[start], node1)) {
 			MapNode N = vector_node_value(map->chains[start], node1);
@@ -149,12 +165,13 @@ void map_insert(Map map, Pointer key, Pointer value) {
 				node = N;
 			}
 		}
+		}
 		if (already_in_map == false) {
 			node = &map->array[start];
 			node->state = OCCUPIED;
 			node->key = key;
 			node->value = value;
-			Vector vec = vector_create(0, NULL);
+			Vector vec = vector_create(0, free);
 			vector_insert_last(vec, node);
 			map->chains[start] = vec;
 		}
@@ -199,7 +216,9 @@ bool map_remove(Map map, Pointer key) {
 		map->destroy_value(node->value);
 
 	map->size--;
-
+	node->state = EMPTY;
+	node->key = NULL;
+	node->value = NULL;
 	return true;
 }
 
@@ -282,15 +301,14 @@ MapNode map_find_node(Map map, Pointer key) {
 			return &map->array[pos];
 	}
 	if (map->chains[start] != NULL) {
-	for (VectorNode node = vector_first(map->chains[start]); 
-	node != VECTOR_EOF; 
-	node = vector_next(map->chains[start], node)) {
-		if (map->chains[start] != NULL) {
-		MapNode MapN = vector_node_value(map->chains[start], node);
-		Pointer found_key = MapN->key;
-		if (found_key == key) return MapN;
+		for (VectorNode node = vector_first(map->chains[start]); 
+		node != VECTOR_EOF; 
+		node = vector_next(map->chains[start], node)) {
+			MapNode MapN = vector_node_value(map->chains[start], node);
+			if (MapN != NULL) {
+				if (map->compare(MapN->key, key) == 0) return MapN;
+			}
 		}
-	}
 	}
 
 	return MAP_EOF;
