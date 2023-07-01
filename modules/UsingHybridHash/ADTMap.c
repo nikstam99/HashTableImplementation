@@ -30,7 +30,7 @@ int prime_sizes[] = {53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 4915
 struct map_node{
 	Pointer key;
 	Pointer value;
-	State state;		// Μεταβλητή για να μαρκάρουμε την κατάσταση των κόμβων (βλέπε διαγραφή)
+	State state;		// Μεταβλητή για να μαρκάρουμε την κατάσταση των κόμβων 
 };
 
 // Δομή του Map (περιέχει όλες τις πληροφορίες που χρεαζόμαστε για το HashTable)
@@ -44,17 +44,6 @@ struct map {
 	DestroyFunc destroy_key;	// Συναρτήσεις που καλούνται όταν διαγράφουμε έναν κόμβο απο το map.
 	DestroyFunc destroy_value;
 };
-
-/*static void vector_remove(Vector vec, VectorNode node) {
-	Pointer last_value = vector_node_value(vec, vector_last(vec));
-	Pointer rem_value = vector_node_value(vec, node);
-	for (int i = 0; i < vector_size(vec); i++) {
-		if (vector_get_at(vec, i) == rem_value) {
-			vector_set_at(vec, i, last_value);
-			vector_remove_last(vec);
-		}
-	}
-}*/
 
 Map map_create(CompareFunc compare, DestroyFunc destroy_key, DestroyFunc destroy_value) {
 	// Δεσμεύουμε κατάλληλα τον χώρο που χρειαζόμαστε για το hash table
@@ -103,10 +92,11 @@ static void rehash(Map map) {
 	map_chains = map->chains;
 	// Δημιουργούμε ένα μεγαλύτερο hash table
 	map->array = malloc(map->capacity * sizeof(struct map_node));
+	map->chains = malloc(map->capacity * sizeof(Vector));
 	for (int i = 0; i < map->capacity; i++) {
 		map->array[i].state = EMPTY;
+		map->chains[i] = NULL;
 	}
-	map->chains = malloc(map->capacity * sizeof(Vector));
 	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο (το rehash είναι και μία ευκαιρία να ξεφορτωθούμε τα deleted nodes)
 	map->size = 0;
 	for (int i = 0; i < old_capacity; i++) {
@@ -121,7 +111,6 @@ static void rehash(Map map) {
 				map_insert(map, N->key, N->value);
 			}
 		}
-		
 	}
 	//Αποδεσμεύουμε τον παλιό πίνακα ώστε να μήν έχουμε leaks
 	free(old_array);
@@ -139,9 +128,9 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	uint pos;
 	uint start = map->hash_function(key) % map->capacity;
 	uint stop = (start + 3) % map->capacity;
-	for (pos = start;										// ξεκινώντας από τη θέση που κάνει hash το key
-		pos != stop;						// αν φτάσουμε σε EMPTY σταματάμε
-		pos = (pos + 1) % map->capacity) {										// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
+	for (pos = start;							// ξεκινώντας από τη θέση που κάνει hash το key
+		pos != stop;							// αν φτάσουμε σε EMPTY σταματάμε
+		pos = (pos + 1) % map->capacity) {		// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 		if (map->array[pos].state == OCCUPIED) {
 			if (map->compare(map->array[pos].key, key) == 0) {
 				already_in_map = true;
@@ -160,7 +149,7 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		node1 != VECTOR_EOF; 
 		node1 = vector_next(map->chains[start], node1)) {
 			MapNode N = vector_node_value(map->chains[start], node1);
-			if (N->key == key && N->value == value) {
+			if (map->compare(N->key, key)) {
 				already_in_map = true;
 				node = N;
 			}
@@ -171,25 +160,27 @@ void map_insert(Map map, Pointer key, Pointer value) {
 			node->state = OCCUPIED;
 			node->key = key;
 			node->value = value;
-			Vector vec = vector_create(0, free);
-			vector_insert_last(vec, node);
-			map->chains[start] = vec;
+			if (map->chains[start] == NULL) {
+				Vector vec = vector_create(0, free);
+				vector_insert_last(vec, node);
+				map->chains[start] = vec;
+			}
+			else vector_insert_last(map->chains[start], node);
+
 		}
 	}
 	// Σε αυτό το σημείο, το node είναι ο κόμβος στον οποίο θα γίνει εισαγωγή.
 	if (already_in_map) {
-		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destropy
-		if (node->key != key && map->destroy_key != NULL)
+		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destroy
+		if (node->key != key && map->destroy_key != NULL) 
 			map->destroy_key(node->key);
 
-		if (node->value != value && map->destroy_value != NULL)
+		if (node->value != value && map->destroy_value != NULL) 
 			map->destroy_value(node->value);
-
 	} 
-	else {
 		// Νέο στοιχείο, αυξάνουμε τα συνολικά στοιχεία του map
-		map->size++;
-	}
+	map->size++;
+	
 	
 		// Προσθήκη τιμών στον κόμβο
 		node->state = OCCUPIED;
@@ -197,7 +188,6 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		node->value = value;
 	
 	// Αν με την νέα εισαγωγή ξεπερνάμε το μέγιστο load factor, πρέπει να κάνουμε rehash.
-	// Στο load factor μετράμε και τα DELETED, γιατί και αυτά επηρρεάζουν τις αναζητήσεις.
 	float load_factor = (float)(map->size) / map->capacity;
 	if (load_factor > MAX_LOAD_FACTOR)
 		rehash(map);
@@ -254,9 +244,13 @@ void map_destroy(Map map) {
 			if (map->destroy_value != NULL)
 				map->destroy_value(map->array[i].value);
 		}
+		if (map->chains[i] != NULL) {
+			vector_destroy(map->chains[i]);
+		}
 	}
 
 	free(map->array);
+	free(map->chains);
 	free(map);
 }
 
@@ -296,7 +290,7 @@ MapNode map_find_node(Map map, Pointer key) {
 		pos != (start + 3) % map->capacity;							// αν φτάσουμε σε EMPTY σταματάμε
 		pos = (pos + 1) % map->capacity) {						// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
-		// Μόνο σε OCCUPIED θέσεις (όχι DELETED), ελέγχουμε αν το key είναι εδώ
+		// Μόνο σε OCCUPIED θέσεις, ελέγχουμε αν το key είναι εδώ
 		if (map->array[pos].state == OCCUPIED && map->compare(map->array[pos].key, key) == 0)
 			return &map->array[pos];
 	}
