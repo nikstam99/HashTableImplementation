@@ -111,34 +111,30 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	uint start = map->hash_function(key) % map->capacity;
 	uint stop = (start + 3) % map->capacity;
 	for (pos = start;							// ξεκινώντας από τη θέση που κάνει hash το key
-		pos != stop;							// αν φτάσουμε σε EMPTY σταματάμε
+		pos != stop;							
 		pos = (pos + 1) % map->capacity) {		// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
+
 		if (map->array[pos].state == EMPTY) {
-			if (node == NULL)
-				node = &map->array[pos];
-			break;
+			node = &map->array[pos];
 		} 
 		else if (map->compare(map->array[pos].key, key) == 0) {
 			already_in_map = true;
-			node = &map->array[pos];						// βρήκαμε το key, το ζευγάρι θα μπει αναγκαστικά εδώ (ακόμα και αν είχαμε προηγουμένως βρει DELETED θέση)
+			node = &map->array[pos];						// βρήκαμε το key, το ζευγάρι θα μπει αναγκαστικά εδώ 
 			break;											// και δε χρειάζεται να συνεχίζουμε την αναζήτηση.
 		}
 	}
-	if (node != NULL && already_in_map) {
-		node->state = OCCUPIED;
-	}
+	if (node == NULL) {
 	bool Flag = false;
 	bool not_found = false;
-	while (pos - start <= 3 && map->array[pos].state != EMPTY) {
-		if (map->array[pos].state != EMPTY) {
-			pos = stop;
-			int count = 0;
-			while (count != map->capacity) {
-				if (map->array[pos].state == EMPTY) break;
-				else pos = (pos + 1) % map->capacity;
-				count++;
-			}
+	pos = stop;
+	int count = 0;
+	while (count != map->capacity) {
+		if (map->array[pos].state == EMPTY) break;
+		else pos = (pos + 1) % map->capacity;
+		count++;
+	}
+	while (1) {
 			if (map->array[pos].state == EMPTY) {
 				uint i;
 				uint start1 = map->hash_function(key) % map->capacity;
@@ -147,23 +143,28 @@ void map_insert(Map map, Pointer key, Pointer value) {
 					i != stop1;							
 					i = (i + 1) % map->capacity) {
 				
-					if (i - pos <= 3 && map->hash_function(map->array[i].key) - pos <= 3) {
+					if (pos - map->hash_function(map->array[i].key) % map->capacity <= 3) {
 						MapNode temp = &map->array[pos];
-						map->array[pos] = map->array[stop];
-						map->array[stop] = *temp;
+						map->array[pos] = map->array[i];
+						map->array[i] = *temp;
 						Flag = true;
+						pos = i;
 						break;
 					}
 				}
 			}
 			if (Flag) Flag = false;
-			else not_found = true;
-		}
+			else {
+				not_found = true;
+				break;
+			}
 	}
+	
 	if (not_found) {
 		rehash(map);
 		map_insert(map, key, value);
 		return;
+	}
 	}
 	// Σε αυτό το σημείο, το node είναι ο κόμβος στον οποίο θα γίνει εισαγωγή.
 	if (already_in_map) {
@@ -174,7 +175,8 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		if (node->value != value && map->destroy_value != NULL)
 			map->destroy_value(node->value);
 
-	} else {
+	} 
+	else {
 		// Νέο στοιχείο, αυξάνουμε τα συνολικά στοιχεία του map
 		map->size++;
 	}
@@ -279,7 +281,7 @@ MapNode map_find_node(Map map, Pointer key) {
 	// Διασχίζουμε τον πίνακα, ξεκινώντας από τη θέση που κάνει hash το key, και για όσο δε βρίσκουμε EMPTY
 	int count = 0;
 	for (uint pos = map->hash_function(key) % map->capacity;		// ξεκινώντας από τη θέση που κάνει hash το key
-		map->array[pos].state != EMPTY;							// αν φτάσουμε σε EMPTY σταματάμε
+		pos != (map->hash_function(key) + 3) % map->capacity;							// αν φτάσουμε σε EMPTY σταματάμε
 		pos = (pos + 1) % map->capacity) {						// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
 		// Μόνο σε OCCUPIED θέσεις (όχι DELETED), ελέγχουμε αν το key είναι εδώ
