@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "ADTVector.h"
 #include "ADTMap.h"
+#include "stdio.h"
 
 
 // Οι κόμβοι του map στην υλοποίηση με hash table, μπορούν να είναι σε 3 διαφορετικές καταστάσεις,
@@ -141,7 +142,6 @@ bool map_insert_in_hash(Map map, Pointer key, Pointer value) {
 		}
 	}
 		if (node == NULL) return false;
-		else return true;
 	
 		if (!already_in_map) map->size++;
 		
@@ -156,6 +156,8 @@ bool map_insert_in_hash(Map map, Pointer key, Pointer value) {
 		node->key = key;
 		node->state = OCCUPIED;
 		node->value = value;
+
+		return true;
 }
 
 void map_insert_in_vector(Map map, Pointer key, Pointer value){
@@ -206,73 +208,8 @@ void map_insert(Map map, Pointer key, Pointer value) {
 
 	bool insert = map_insert_in_hash(map, key, value);
 	if (!insert) map_insert_in_vector(map, key, value);
-
-
-
-
-	/*bool already_in_map = false;
-	MapNode node = NULL;
-	uint pos;
-	uint start = map->hash_function(key) % map->capacity;
-	uint stop = (start + 3) % map->capacity;
-	for (pos = start;							// ξεκινώντας από τη θέση που κάνει hash το key
-		pos != stop;							// αν φτάσουμε σε EMPTY σταματάμε
-		pos = (pos + 1) % map->capacity) {		// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
-
-		if (map->array[pos].state == EMPTY)	
-			node = &map->array[pos];
-	
-		else if (map->compare(map->array[pos].key, key) == 0) {
-			already_in_map = true;
-			node = &map->array[pos];						// βρήκαμε το key, το ζευγάρι θα μπει αναγκαστικά εδώ (ακόμα και αν είχαμε προηγουμένως βρει DELETED θέση)
-			break;											// και δε χρειάζεται να συνεχίζουμε την αναζήτηση.
-		}
-	}
-	if (node == NULL) {
-		if (map->chains[start] != NULL) {
-		for (VectorNode node1 = vector_first(map->chains[start]); 
-		node1 != VECTOR_EOF; 
-		node1 = vector_next(map->chains[start], node1)) {
-			MapNode N = vector_node_value(map->chains[start], node1);
-			if (map->compare(N->key, key) == 0) {
-				already_in_map = true;
-				node = N;
-			}
-		}
-		}
-		if (already_in_map == false) {
-			node = &map->array[start];
-			node->state = OCCUPIED;
-			node->key = key;
-			node->value = value;
-			if (map->chains[start] == NULL) {
-				Vector vec = vector_create(0, free);
-				vector_insert_last(vec, node);
-				map->chains[start] = vec;
-			}
-			else vector_insert_last(map->chains[start], node);
-
-		}
-	}
-	// Σε αυτό το σημείο, το node είναι ο κόμβος στον οποίο θα γίνει εισαγωγή.
-	if (already_in_map) {
-		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destroy
-		if (node->key != key && map->destroy_key != NULL) 
-			map->destroy_key(node->key);
-
-		if (node->value != value && map->destroy_value != NULL) 
-			map->destroy_value(node->value);
-	} 
-		// Νέο στοιχείο, αυξάνουμε τα συνολικά στοιχεία του map
-	else map->size++;
-	
-	if (node != NULL) {
-		// Προσθήκη τιμών στον κόμβο
-		node->state = OCCUPIED;
-		node->key = key;
-		node->value = value;
-	}*/
-	
+	if (insert) printf("1");
+	else printf("0");
 	// Αν με την νέα εισαγωγή ξεπερνάμε το μέγιστο load factor, πρέπει να κάνουμε rehash.
 	float load_factor = (float)(map->size) / map->capacity;
 	if (load_factor > MAX_LOAD_FACTOR)
