@@ -98,7 +98,7 @@ static void rehash(Map map) {
 		map->array[i].state = EMPTY;
 		map->chains[i] = NULL;
 	}
-	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο (το rehash είναι και μία ευκαιρία να ξεφορτωθούμε τα deleted nodes)
+	// Τοποθετούμε τα entries που όντως περιέχουν ένα στοιχείο
 	map->size = 0;
 	for (int i = 0; i < old_capacity; i++) {
 		if (old_array[i].state == OCCUPIED) {
@@ -207,6 +207,7 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	// ή μέχρι να βρούμε το κλειδί ώστε να το αντικαταστήσουμε.
 
 	bool insert = map_insert_in_hash(map, key, value);
+	if (insert);
 	if (!insert) map_insert_in_vector(map, key, value);
 	//if (insert) printf("1");
 	//else printf("0");
@@ -290,10 +291,11 @@ MapNode map_first(Map map) {
 
 MapNode map_next(Map map, MapNode node) {
 	// Το node είναι pointer στο i-οστό στοιχείο του array, οπότε node - array == i  (pointer arithmetic!)
-	for (int i = node - map->array + 1; i < map->capacity; i++)
-		if (map->array[i].state == OCCUPIED)
-			return &map->array[i];
-
+	if (node - map->array < map->capacity && node - map->array >= 0) {
+		for (int i = node - map->array + 1; i < map->capacity; i++)
+			if (map->array[i].state == OCCUPIED)
+				return &map->array[i];
+	}
 	return MAP_EOF;
 }
 
