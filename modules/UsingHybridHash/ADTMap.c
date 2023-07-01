@@ -208,8 +208,8 @@ void map_insert(Map map, Pointer key, Pointer value) {
 
 	bool insert = map_insert_in_hash(map, key, value);
 	if (!insert) map_insert_in_vector(map, key, value);
-	if (insert) printf("1");
-	else printf("0");
+	//if (insert) printf("1");
+	//else printf("0");
 	// Αν με την νέα εισαγωγή ξεπερνάμε το μέγιστο load factor, πρέπει να κάνουμε rehash.
 	float load_factor = (float)(map->size) / map->capacity;
 	if (load_factor > MAX_LOAD_FACTOR)
