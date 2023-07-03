@@ -109,6 +109,7 @@ static void rehash(Map map) {
 			node != VECTOR_EOF;
 			node = vector_next(map_chains[i], node)) {
 				MapNode N = vector_node_value(map_chains[i], node);
+				if (N->state != EMPTY)
 				map_insert(map, N->key, N->value);
 			}
 		}
@@ -168,10 +169,12 @@ void map_insert_in_vector(Map map, Pointer key, Pointer value){
 	if (map->chains[pos] != NULL) {
 		for (i = 0; i < vector_size(map->chains[pos]); i++) {
 			MapNode N = vector_get_at(map->chains[pos], i);
+			if (N->state != EMPTY) {
 			if (map->compare(N->key, key) == 0) {
 				node = N;
 				already_in_map = true;
 				break;
+			}
 			}
 		}
 		if (!already_in_map) {
@@ -297,12 +300,36 @@ MapNode map_first(Map map) {
 }
 
 MapNode map_next(Map map, MapNode node) {
+	bool flag = false;
+	bool flag_null = false;
 	// Το node είναι pointer στο i-οστό στοιχείο του array, οπότε node - array == i  (pointer arithmetic!)
-	if (node - map->array < map->capacity && node - map->array >= 0) {
-		for (int i = node - map->array + 1; i < map->capacity; i++)
-			if (map->array[i].state == OCCUPIED)
-				return &map->array[i];
+	int i = node - map->array + 1;
+	if (&map->array[map->capacity] == node) flag = true;
+	while (i < map->capacity) {
+		if (map->array[i].state == OCCUPIED) return &map->array[i];
+		i++;
+		if (i == map->capacity) flag = true;
 	}
+	int p = 0;
+	for (int i = 0; i < map->capacity; i++) 
+		if (map->chains[i] == NULL) p++;
+	if (p == map->capacity) flag_null = true;
+
+	if (flag && !flag_null) {
+		Vector vec = map->chains[0];
+		int pos = 0;
+		while (1) {
+			vec = map->chains[pos];
+			pos++;
+			if (vec != NULL) {
+				for (i = 0; i < vector_size(vec); i++) {
+					MapNode N = vector_get_at(vec, i);
+					if (N->state != EMPTY) return N; 
+				}
+			}
+		}
+	}
+
 	return MAP_EOF;
 }
 
@@ -331,7 +358,7 @@ MapNode map_find_node(Map map, Pointer key) {
 		node != VECTOR_EOF; 
 		node = vector_next(map->chains[start], node)) {
 			MapNode MapN = vector_node_value(map->chains[start], node);
-			if (MapN != NULL) {
+			if (MapN->state != EMPTY) {
 				if (map->compare(MapN->key, key) == 0) return MapN;
 			}
 		}
