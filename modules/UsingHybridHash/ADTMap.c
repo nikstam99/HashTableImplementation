@@ -163,16 +163,19 @@ bool map_insert_in_hash(Map map, Pointer key, Pointer value) {
 void map_insert_in_vector(Map map, Pointer key, Pointer value){
 	bool already_in_map = false;
 	uint pos = map->hash_function(key) % map->capacity;
-	MapNode node = &map->array[pos];
+	MapNode node = NULL;
+	int i;
 	if (map->chains[pos] != NULL) {
-		for (int i = 0; i < vector_size(map->chains[pos]); i++) {
+		for (i = 0; i < vector_size(map->chains[pos]); i++) {
 			MapNode N = vector_get_at(map->chains[pos], i);
 			if (map->compare(N->key, key) == 0) {
 				node = N;
 				already_in_map = true;
+				break;
 			}
 		}
 		if (!already_in_map) {
+			node = malloc(sizeof(struct map_node));
 			node->key = key;
 			node->value = value;
 			node->state = OCCUPIED;
@@ -181,24 +184,30 @@ void map_insert_in_vector(Map map, Pointer key, Pointer value){
 	}
 	else {
 		map->chains[pos] = vector_create(0, free);
+		node = malloc(sizeof(struct map_node));
 		node->key = key;
 		node->value = value;
 		node->state = OCCUPIED;
 		vector_insert_last(map->chains[pos], node);
 	}
-		if (!already_in_map) map->size++;
+	if (!already_in_map) map->size++;
 		
-		else {
-			// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destroy
-			if (node->key != key && map->destroy_key != NULL)
-				map->destroy_key(node->key);
+	else {
+		// Αν αντικαθιστούμε παλιά key/value, τa κάνουμε destroy
+		if (node->key != key && map->destroy_key != NULL)
+			map->destroy_key(node->key);
 
-			if (node->value != value && map->destroy_value != NULL)
-				map->destroy_value(node->value);
-		}
+		if (node->value != value && map->destroy_value != NULL)
+			map->destroy_value(node->value);
+		
 		node->key = key;
 		node->state = OCCUPIED;
 		node->value = value;
+		vector_set_at(map->chains[pos], i, node);
+	}
+	node->key = key;
+	node->state = OCCUPIED;
+	node->value = value;
 }
 
 
@@ -209,8 +218,6 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	bool insert = map_insert_in_hash(map, key, value);
 	if (insert);
 	if (!insert) map_insert_in_vector(map, key, value);
-	//if (insert) printf("1");
-	//else printf("0");
 	// Αν με την νέα εισαγωγή ξεπερνάμε το μέγιστο load factor, πρέπει να κάνουμε rehash.
 	float load_factor = (float)(map->size) / map->capacity;
 	if (load_factor > MAX_LOAD_FACTOR)
