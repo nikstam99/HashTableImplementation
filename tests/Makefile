@@ -7,7 +7,7 @@
 
 # Υλοποιήσεις μέσω HopscotchHash: ADTMap
 #
-#UsingHopscotchHash_ADTMap_test_OBJS	= ADTMap_test.o $(MODULES)/UsingHopscotchHash/ADTMap.o
+UsingHopscotchHash_ADTMap_test_OBJS	= ADTMap_test.o $(MODULES)/UsingHopscotchHash/ADTMap.o
 
 # Υλοποιήσεις μέσω HybridHash: ADTMap
 #
