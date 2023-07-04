@@ -301,11 +301,10 @@ MapNode map_first(Map map) {
 
 MapNode map_next(Map map, MapNode node) {
 	bool flag = false;
-	bool flag_null = false;
 	// Το node είναι pointer στο i-οστό στοιχείο του array, οπότε node - array == i  (pointer arithmetic!)
 	int i = node - map->array + 1;
 	if (&map->array[map->capacity] == node) flag = true;
-	while (i < map->capacity) {
+	while (i < map->capacity && i >= 0 ) {
 		if (map->array[i].state == OCCUPIED) return &map->array[i];
 		i++;
 		if (i == map->capacity) flag = true;
@@ -313,9 +312,9 @@ MapNode map_next(Map map, MapNode node) {
 	int p = 0;
 	for (int i = 0; i < map->capacity; i++) 
 		if (map->chains[i] == NULL) p++;
-	if (p == map->capacity) flag_null = true;
+	if (p == map->capacity) return MAP_EOF;
 
-	if (flag && !flag_null) {
+	if (flag) {
 		Vector vec = map->chains[0];
 		int pos = 0;
 		while (1) {
@@ -327,6 +326,36 @@ MapNode map_next(Map map, MapNode node) {
 					if (N->state != EMPTY) return N; 
 				}
 			}
+		}
+	}
+	else {
+		Vector vec = map->chains[map->hash_function(node->key) % map->capacity];
+		int pos = map->hash_function(node->key) % map->capacity;
+		vec = map->chains[pos];
+		while (1) {
+			if (vec != NULL) {
+				if (pos == map->hash_function(node->key) % map->capacity) {
+					for (i = 0; i < vector_size(vec); i++) {
+						MapNode val = vector_get_at(vec, i);
+						if (val == node) {
+							for (int p = i + 1; p < vector_size(vec); p++) {
+								val = vector_get_at(vec, p);
+								if (val != NULL && val->state != EMPTY) return val;
+							}
+						}
+						else if (i == vector_size(vec)) break;
+					}
+				}
+				else {
+					for (i = 0; i < vector_size(vec); i++) {
+						MapNode val = vector_get_at(vec, i);
+						if (val->state != EMPTY && val != NULL) return val;
+					}
+				}	
+			}
+		pos = (pos + 1) % map->capacity;
+		vec = map->chains[pos];
+		if (pos == 0) break;
 		}
 	}
 
