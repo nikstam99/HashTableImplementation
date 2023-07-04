@@ -112,6 +112,7 @@ static void rehash(Map map) {
 				if (N->state != EMPTY)
 				map_insert(map, N->key, N->value);
 			}
+			vector_destroy(map_chains[i]);
 		}
 	}
 	//Αποδεσμεύουμε τον παλιό πίνακα ώστε να μήν έχουμε leaks
