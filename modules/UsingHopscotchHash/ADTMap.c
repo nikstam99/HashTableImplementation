@@ -142,10 +142,11 @@ void map_insert(Map map, Pointer key, Pointer value) {
 				uint i;
 				uint start1 = map->hash_function(key) % map->capacity;
 				uint stop1 = (pos - 1) % map->capacity;
+				// Διατρέχουμε τον πίνακα μέχρι το στοιχείο πριν από το empty
 				for (i = start1;							
 					i != stop1;							
 					i = (i + 1) % map->capacity) {
-				
+					// Αν βρούμε στοιχείο που hashάρει σε θέση γειτονική του empty τότε τα ανταλλάσουμε
 					if (pos - map->hash_function(map->array[i].key) % map->capacity <= 3) {
 						MapNode temp = &map->array[pos];
 						map->array[pos] = map->array[i];
@@ -156,13 +157,15 @@ void map_insert(Map map, Pointer key, Pointer value) {
 					}
 				}
 			}
+			// Αν έγινε ανταλλαγή συνεχίζουμε τις επαναλήψεις
 			if (Flag) Flag = false;
+			// Αν δεν βρήκαμε γειτονική θέση σταματάμε
 			else {
 				not_found = true;
 				break;
 			}
 	}
-	
+	// Αν δεν βρέθηκε γειτονική θέση κάνουμε rehash
 	if (not_found) {
 		rehash(map);
 		map_insert(map, key, value);
@@ -190,7 +193,6 @@ void map_insert(Map map, Pointer key, Pointer value) {
 	node->value = value;
 
 	// Αν με την νέα εισαγωγή ξεπερνάμε το μέγιστο load factor, πρέπει να κάνουμε rehash.
-	// Στο load factor μετράμε και τα DELETED, γιατί και αυτά επηρρεάζουν τις αναζητήσεις.
 	float load_factor = (float)(map->size) / map->capacity;
 	if (load_factor > MAX_LOAD_FACTOR)
 		rehash(map);
