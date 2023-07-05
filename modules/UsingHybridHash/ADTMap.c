@@ -353,6 +353,8 @@ MapNode map_next(Map map, MapNode node) {
 		vec = map->chains[pos];
 		while (1) {
 			if (vec != NULL) {
+				// Στην πρώτη επανάληψη ψάχνουμε το προηγούμενο node και όταν το βρούμε
+				// επιστρέφουμε το επόμενο μη κενό στοιχείο 
 				if (pos == map->hash_function(node->key) % map->capacity) {
 					for (i = 0; i < vector_size(vec); i++) {
 						MapNode val = vector_get_at(vec, i);
@@ -365,6 +367,7 @@ MapNode map_next(Map map, MapNode node) {
 						else if (i == vector_size(vec)) break;
 					}
 				}
+				// Σε όλες τις υπόλοιπες επαναλήψεις μέχρι να βρούμε μη κενό node διατρέχουμε ολόκληρα τα vectors
 				else {
 					for (i = 0; i < vector_size(vec); i++) {
 						MapNode val = vector_get_at(vec, i);
@@ -377,7 +380,7 @@ MapNode map_next(Map map, MapNode node) {
 		if (pos == 0) break;
 		}
 	}
-
+	// Αν δεν βρεθεί μη κενό node επιστρέφουμε MAP_EOF
 	return MAP_EOF;
 }
 

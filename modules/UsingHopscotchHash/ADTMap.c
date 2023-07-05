@@ -92,7 +92,7 @@ static void rehash(Map map) {
 	for (int i = 0; i < map->capacity; i++)
 		map->array[i].state = EMPTY;
 
-	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο (το rehash είναι και μία ευκαιρία να ξεφορτωθούμε τα deleted nodes)
+	// Τοποθετούμε ΜΟΝΟ τα entries που όντως περιέχουν ένα στοιχείο 
 	map->size = 0;
 	for (int i = 0; i < old_capacity; i++)
 		if (old_array[i].state == OCCUPIED)
@@ -115,7 +115,7 @@ void map_insert(Map map, Pointer key, Pointer value) {
 		pos = (pos + 1) % map->capacity) {		// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
 
-		if (map->array[pos].state == EMPTY) {
+		if (map->array[pos].state == EMPTY) {	// Αν βρούμε κενό το node θα μπει εδώ
 			node = &map->array[pos];
 		} 
 		else if (map->compare(map->array[pos].key, key) == 0) {
@@ -124,11 +124,14 @@ void map_insert(Map map, Pointer key, Pointer value) {
 			break;											// και δε χρειάζεται να συνεχίζουμε την αναζήτηση.
 		}
 	}
-	if (node == NULL) {
+	// Αν δεν βρήκαμε κενό ή το node διατρέχουμε ολόκληρο τον πίνακα μέχρι να βρούμε
+	// το επόμενο κενό
+	if (node == NULL) {	
 	bool Flag = false;
 	bool not_found = false;
 	pos = stop;
 	int count = 0;
+	// Αποθηκεύουμε στο pos την θέση του κενού στοιχείου
 	while (count != map->capacity) {
 		if (map->array[pos].state == EMPTY) break;
 		else pos = (pos + 1) % map->capacity;
@@ -288,8 +291,7 @@ MapNode map_find_node(Map map, Pointer key) {
 		if (map->array[pos].state == OCCUPIED && map->compare(map->array[pos].key, key) == 0)
 			return &map->array[pos];
 
-		// Αν διασχίσουμε ολόκληρο τον πίνακα σταματάμε. Εφόσον ο πίνακας δεν μπορεί να είναι όλος OCCUPIED,
-		// αυτό μπορεί να συμβεί μόνο στην ακραία περίπτωση που ο πίνακας έχει γεμίσει DELETED τιμές!
+		// Αν διασχίσουμε ολόκληρο τον πίνακα σταματάμε.
 		count++;
 		if (count == map->capacity)
 			break;
