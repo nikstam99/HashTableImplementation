@@ -7,21 +7,35 @@
 
 ### Προσωπικά στοιχεία
 
-__Όνομα__: ...
+__Όνομα__: Νικόλας Σταματάκης
 
-__Α.Μ.__: sdi???????
+__Α.Μ.__: sdi2200169
 
 ### Ασκήσεις που παραδίδονται
 
 Συμπληρώστε εδώ τις ασκήσεις (και τυχόν bonus) που παραδίδετε. Αν κάποια άσκηση
 βρίσκεται σε μη αναμενόμενα αρχεία αναφέρετε και τα αρχεία αυτά.
 
-- ...
-- ...
+- 1
+- 2
 
 ### Documentation
 
-Συμπληρώστε εδώ __όσο documentation χρειάζεται__ ώστε οι βαθμολογητές να
-κατανοήσουν πλήρως τις λύσεις σας και να τις βαθμολογήσουν ανάλογα. Αυτό θα
-πρέπει να γίνει ανεξάρτητα με το αν ο κώδικάς σας είναι καλά σχολιασμένος,
-πράγμα που συνιστάται.
+Κλασσική Υλοποίηση: 
+
+Search: O(1) average amortized, O(n) worst amortized, O(1) average real, O(n) worst real
+
+Insert: O(1) average amortized, O(n) worst amortized, O(n) average real, O(n) worst real
+
+HybridHash:
+
+Search: O(1) average amortized, O(1) worst amortized, O(1) average real, O(n) worst real
+
+Insert: O(1) average amortized, O(n) worst amortized, O(n) average real, O(n) worst real
+
+HopscotchHash:
+
+Search: O(1) average amortized, O(1) worst amortized, O(1) average real, O(n) worst real
+
+Insert: O(1) average amortized, O(n) worst amortized, O(n) average real, O(n) worst real
+

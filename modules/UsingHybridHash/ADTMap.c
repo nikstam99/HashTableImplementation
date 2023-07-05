@@ -396,9 +396,9 @@ MapNode map_find_node(Map map, Pointer key) {
 	// Διασχίζουμε τον πίνακα, ξεκινώντας από τη θέση που κάνει hash το key, και για όσο δε βρίσκουμε EMPTY
 	uint start = map->hash_function(key) % map->capacity;
 	uint pos;
-	for (pos = start;										// ξεκινώντας από τη θέση που κάνει hash το key
+	for (pos = start;								// ξεκινώντας από τη θέση που κάνει hash το key
 		pos != (start + 3) % map->capacity;				
-		pos = (pos + 1) % map->capacity) {					// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
+		pos = (pos + 1) % map->capacity) {			// linear probing, γυρνώντας στην αρχή όταν φτάσουμε στη τέλος του πίνακα
 
 		// Μόνο σε OCCUPIED θέσεις, ελέγχουμε αν το key είναι εδώ
 		if (map->array[pos].state == OCCUPIED && map->compare(map->array[pos].key, key) == 0)
